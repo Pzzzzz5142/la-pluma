@@ -31,7 +31,7 @@ export default defineNuxtConfig({
   supabase: {
     useSsrCookies: true,
     cookieOptions: {
-      maxAge: 60 * 60 * 8,
+      maxAge: 60 * 60 * 24 * 30,
       sameSite: 'lax',
       secure: true,
     },
