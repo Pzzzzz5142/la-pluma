@@ -1,0 +1,46 @@
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# Node
+node_modules
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+.fleet
+.idea
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# PWA
+public/sw.js
+public/workbox-*.js
+public/worker-*.js
+public/sw.js.map
+public/workbox-*.js.map
+public/worker-*.js.map
+
+# Python
+backend/__pycache__/
+backend/*.pyc
+backend/.venv/
+
+# PID files
+.pids/
+
+# Supabase temp
+supabase/.temp/
+
+# Session
+session

@@ -1,0 +1,47 @@
+{
+  "name": "nuxt-notes",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.36.0",
+    "@nuxt/ui": "^3.0.0",
+    "@nuxtjs/supabase": "^1.4.0",
+    "@pinia/nuxt": "^0.10.0",
+    "@tiptap/core": "^2.27.2",
+    "@tiptap/extension-code-block-lowlight": "^2.11.0",
+    "@tiptap/extension-image": "^2.11.0",
+    "@tiptap/extension-placeholder": "^2.11.0",
+    "@tiptap/extension-task-item": "^2.11.0",
+    "@tiptap/extension-task-list": "^2.11.0",
+    "@tiptap/pm": "^2.11.0",
+    "@tiptap/starter-kit": "^2.11.0",
+    "@tiptap/suggestion": "^2.27.2",
+    "@tiptap/vue-3": "^2.11.0",
+    "@vite-pwa/nuxt": "^0.10.0",
+    "@vueuse/core": "^14.2.1",
+    "@vueuse/motion": "^2.2.0",
+    "@vueuse/nuxt": "^14.2.1",
+    "lowlight": "^3.2.0",
+    "nuxt": "^3.16.0",
+    "pinia": "^3.0.0",
+    "splitpanes": "^3.1.0",
+    "vue": "latest",
+    "vue-router": "latest"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "^1.2.98",
+    "@nuxt/eslint": "^1.0.0",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.7.0",
+    "vue-tsc": "^2.0.0"
+  }
+}
