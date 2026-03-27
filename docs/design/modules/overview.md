@@ -103,6 +103,7 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 
 - **relay/** (Node.js, `ws`): routes messages by `sessionId`, verifies Supabase JWT for browsers, `RELAY_SECRET` for Pi backend. Pi connects outbound — no inbound ports needed.
 - **backend/** (Python, FastAPI + `claude-agent-sdk`): connects outbound to relay, runs Agent SDK (`query()`), streams blocks back. Model: `claude-opus-4-6`, adaptive thinking, MCP tool `search_notes` (stub).
+  - **TLS note**: the relay server does TLS fingerprint filtering at the nginx level — only browser-like ClientHellos are accepted; OpenSSL-based clients get TCP RST. The backend uses `curl_cffi` (impersonate `"firefox"`) instead of `websockets` to pass this check.
 - **Frontend**: `aiStore.ts` manages WS lifecycle + `WsMessageProcessor` class maps SDK blocks → UI blocks. Components: `AiPanel`, `AiMessageRow`, `AiThinkingBlock`, `AiToolUseBlock`, `AiTextBlock`.
 - Note context: `tiptapToText()` utility extracts plain text from Tiptap JSON, stored in `uiStore.aiNoteContext`, synced from `[id].vue`.
 - Inline `/ai` editor commands: pending (F8)
@@ -135,3 +136,4 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 | 2026-03-22 | agent | Updated to reflect actual implementation: splitpanes, English, removed stale plan, added module pattern |
 | 2026-03-22 | agent | F6: BubbleMenu, SlashExtension, mode toggle, task list, CodeBlockLowlight, article serif mode |
 | 2026-03-27 | agent | F7: AI panel with relay/backend split architecture, WebSocket, Agent SDK (Python) |
+| 2026-03-27 | agent | backend: replaced `websockets` with `curl_cffi` to bypass relay server TLS fingerprint filtering |

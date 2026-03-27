@@ -7,7 +7,6 @@ import json
 import logging
 from typing import Any
 
-import websockets
 from claude_agent_sdk import (
     ContentBlock,
     TextBlock,
@@ -36,9 +35,7 @@ class RelaySender:
     """Wraps a websocket connection and provides typed send methods
     for the relay protocol."""
 
-    def __init__(
-        self, ws: websockets.ClientConnection, session_id: str, msg_id: str
-    ) -> None:
+    def __init__(self, ws: Any, session_id: str, msg_id: str) -> None:
         self._ws = ws
         self._session_id = session_id
         self._msg_id = msg_id

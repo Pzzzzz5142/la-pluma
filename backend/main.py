@@ -7,8 +7,8 @@ import os
 from contextlib import asynccontextmanager
 from typing import Any
 
-import websockets
 from agent import AgentRunner
+from curl_cffi.requests import AsyncSession
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from relay_sender import RelaySender
@@ -70,29 +70,58 @@ async def _get_chat_version(note_id: str, user_token: str) -> int:
 # ---------------------------------------------------------------------------
 
 
+class _WsAdapter:
+    """Wraps curl_cffi WebSocket to expose the send/recv/aiter interface."""
+
+    def __init__(self, ws: Any) -> None:
+        self._ws = ws
+
+    async def send(self, data: str) -> None:
+        await self._ws.send_str(data)
+
+    async def recv(self) -> str:
+        data, _ = await self._ws.recv()
+        return data.decode() if isinstance(data, bytes) else data
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self) -> str:
+        data, _ = await self._ws.recv()
+        return data.decode() if isinstance(data, bytes) else data
+
+
 async def relay_loop() -> None:
     backoff = 1.0
     while True:
         try:
-            async with websockets.connect(RELAY_URL) as ws:
-                backoff = 1.0
-                logger.info(f"Connected to relay: {RELAY_URL}")
+            logger.info(f"RELAY: {RELAY_URL}, {RELAY_SECRET}")
+            async with AsyncSession(impersonate="firefox") as session:
+                _ws = await session.ws_connect(RELAY_URL)
+                try:
+                    ws = _WsAdapter(_ws)
+                    backoff = 1.0
+                    logger.info(f"Connected to relay: {RELAY_URL}")
 
-                await ws.send(
-                    json.dumps({"type": "agent_auth", "secret": RELAY_SECRET})
-                )
-                ack = json.loads(await ws.recv())
-                if ack.get("type") != "agent_auth_ok":
-                    logger.info(f"Auth failed: {ack}")
-                    return
+                    await ws.send(
+                        json.dumps({"type": "agent_auth", "secret": RELAY_SECRET})
+                    )
+                    ack = json.loads(await ws.recv())
+                    if ack.get("type") != "agent_auth_ok":
+                        logger.info(f"Auth failed: {ack}")
+                        return
 
-                logger.info("Authenticated with relay — ready")
+                    logger.info("Authenticated with relay — ready")
 
-                async for raw in ws:
-                    msg: dict[str, Any] = json.loads(raw)
-                    await handle_relay_message(ws, msg)
+                    async for raw in ws:
+                        msg: dict[str, Any] = json.loads(raw)
+                        await handle_relay_message(ws, msg)
 
-        except (websockets.ConnectionClosed, OSError) as exc:
+                    raise OSError("connection closed")
+                finally:
+                    await _ws.aclose()
+
+        except OSError as exc:
             logger.info(f"Relay disconnected: {exc}. Reconnecting in {backoff:.0f}s...")
         except Exception as exc:
             logger.info(f"Unexpected error: {exc!r}. Reconnecting in {backoff:.0f}s...")
@@ -101,9 +130,7 @@ async def relay_loop() -> None:
         backoff = min(backoff * 2, 60.0)
 
 
-async def handle_relay_message(
-    ws: websockets.ClientConnection, msg: dict[str, Any]
-) -> None:
+async def handle_relay_message(ws: _WsAdapter, msg: dict[str, Any]) -> None:
     msg_type = msg.get("type")
 
     if msg_type == "chat":
