@@ -30,11 +30,10 @@ export default defineNuxtConfig({
 
   supabase: {
     useSsrCookies: true,
-    // TODO: remove secure:false before prod — only needed for local HTTP dev
     cookieOptions: {
       maxAge: 60 * 60 * 8,
       sameSite: 'lax',
-      secure: false,
+      secure: true,
     },
     redirectOptions: {
       login: '/login',
