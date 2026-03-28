@@ -16,7 +16,9 @@ interface WsServerMessage {
   userId?: string
   claudeSessionId?: string
   chatVersion?: number
-  messages?: AiMessage[]
+  content?: string
+  agentOnline?: boolean
+  timestamp?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -49,7 +51,6 @@ class WsMessageProcessor {
         type: 'thinking',
         content: (block.thinking as string) ?? '',
         status: 'done',
-        visible: true,
       }
       blocks.push(uiBlock)
     } else if (block.type === 'tool_use') {
@@ -59,7 +60,6 @@ class WsMessageProcessor {
         name: (block.name as string) ?? '',
         input: JSON.stringify(block.input ?? {}),
         status: 'running',
-        visible: true,
       }
       blocks.push(uiBlock)
     } else if (block.type === 'tool_result') {
@@ -155,6 +155,8 @@ export const useAiStore = defineStore('ai', () => {
   const streaming = ref(false)
   const queued = ref(false)
   const connected = ref(false)
+  const backendConnected = ref(false)
+  const relayLatency = ref<number | null>(null)
   const restoring = ref(false)
   const restoreFailed = ref(false)
   const sessionCleared = ref(false)
@@ -169,6 +171,23 @@ export const useAiStore = defineStore('ai', () => {
   let currentNoteId: string | null = null
   let currentChatVersion = 0
   let pendingRestore: { cSessionId: string; noteId: string } | null = null
+  let pingTimer: ReturnType<typeof setInterval> | null = null
+
+  function _startPing(): void {
+    if (pingTimer) return
+    const sendPing = () => {
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }))
+      }
+    }
+    sendPing()
+    pingTimer = setInterval(sendPing, 10000)
+  }
+
+  function _stopPing(): void {
+    if (pingTimer) { clearInterval(pingTimer); pingTimer = null }
+    relayLatency.value = null
+  }
 
   const wsUrl = useRuntimeConfig().public.wsUrl as string
   const supabaseSession = useSupabaseSession()
@@ -229,6 +248,8 @@ export const useAiStore = defineStore('ai', () => {
 
       if (msg.type === 'auth_ok') {
         connected.value = true
+        backendConnected.value = msg.agentOnline ?? false
+        _startPing()
         if (pendingRestore) {
           const { cSessionId, noteId } = pendingRestore
           pendingRestore = null
@@ -237,7 +258,12 @@ export const useAiStore = defineStore('ai', () => {
       } else if (msg.type === 'auth_error') {
         console.error('[aiStore] Auth error:', msg.error)
         ws?.close()
+      } else if (msg.type === 'pong') {
+        if (msg.timestamp != null) relayLatency.value = Date.now() - msg.timestamp
+      } else if (msg.type === 'agent_online') {
+        backendConnected.value = true
       } else if (msg.type === 'agent_offline') {
+        backendConnected.value = false
         streaming.value = false
         restoring.value = false
         messages.value.push({
@@ -273,22 +299,16 @@ export const useAiStore = defineStore('ai', () => {
           role: 'assistant',
           blocks: [{ type: 'text', content: `*(Error: ${msg.error})*`, status: 'error' }],
         })
-      } else if (msg.type === 'restore_ok') {
+      } else if (msg.type === 'restore_user_msg') {
+        messages.value.push({ role: 'user', blocks: [{ type: 'text', content: msg.content ?? '', status: 'done' }] })
+      } else if (msg.type === 'restore_done') {
         restoring.value = false
-        // Guard: if session was cleared while restore was in flight, discard stale data
         if (!claudeSessionId.value) return
-        if (msg.messages && msg.messages.length > 0) {
-          // If user sent a message while restore was queued, preserve it
-          const last = messages.value[messages.value.length - 1]
-          const pendingUserMsg = streaming.value && last?.role === 'user' ? last : null
-          messages.value = msg.messages
-          if (msg.chatVersion != null) {
-            currentChatVersion = msg.chatVersion
-          }
-          if (claudeSessionId.value) {
-            saveCache(claudeSessionId.value, currentChatVersion, messages.value)
-          }
-          if (pendingUserMsg) messages.value.push(pendingUserMsg)
+        if (msg.chatVersion != null) {
+          currentChatVersion = msg.chatVersion
+        }
+        if (claudeSessionId.value) {
+          saveCache(claudeSessionId.value, currentChatVersion, messages.value)
         }
       } else if (msg.type === 'restore_error') {
         restoring.value = false
@@ -304,7 +324,9 @@ export const useAiStore = defineStore('ai', () => {
 
     ws.onclose = () => {
       connected.value = false
+      backendConnected.value = false
       streaming.value = false
+      _stopPing()
       // Reconnect with backoff
       reconnectTimer = setTimeout(() => {
         reconnectDelay = Math.min(reconnectDelay * 2, 30000)
@@ -322,9 +344,11 @@ export const useAiStore = defineStore('ai', () => {
       clearTimeout(reconnectTimer)
       reconnectTimer = null
     }
+    _stopPing()
     ws?.close()
     ws = null
     connected.value = false
+    backendConnected.value = false
   }
 
   function sendMessage(userMessage: string, noteContext: string): void {
@@ -425,6 +449,8 @@ export const useAiStore = defineStore('ai', () => {
     streaming,
     queued,
     connected,
+    backendConnected,
+    relayLatency,
     restoring,
     restoreFailed,
     sessionCleared,

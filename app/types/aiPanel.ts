@@ -4,7 +4,6 @@ export interface ThinkingUiBlock {
   type: 'thinking'
   content: string
   status: BlockStatus
-  visible: boolean
 }
 
 export interface ToolUseUiBlock {
@@ -15,7 +14,6 @@ export interface ToolUseUiBlock {
   result?: string
   isError?: boolean
   status: 'running' | 'success' | 'error'
-  visible: boolean
 }
 
 export interface TextUiBlock {

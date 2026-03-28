@@ -4,7 +4,7 @@ defineProps<{ block: ToolUseUiBlock }>()
 </script>
 
 <template>
-  <div v-show="block.visible" class="flex items-center gap-2 text-xs text-muted px-2.5 py-1.5 border border-border rounded-md">
+  <div class="flex items-center gap-2 text-xs text-muted px-2.5 py-1.5 border border-border rounded-md">
     <UIcon name="i-lucide-wrench" class="shrink-0" />
     <span class="font-mono">{{ block.name }}</span>
     <span class="ml-auto">

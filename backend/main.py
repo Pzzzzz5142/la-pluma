@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from agent import AgentRunner
+from claude_agent_sdk import get_session_messages
 from curl_cffi.requests import AsyncSession
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -194,25 +195,81 @@ async def handle_relay_message(ws: _WsAdapter, msg: dict[str, Any]) -> None:
         restore_user_token: str = msg.get("userToken", "")
         logger.info(f"[restore] claude={restore_claude_id[:8]}")
         try:
-            history = AgentRunner.restore(restore_claude_id)
+            raw_messages = get_session_messages(session_id=restore_claude_id)
             chat_version = 0
             if restore_note_id and restore_user_token:
                 chat_version = await _get_chat_version(
                     restore_note_id, restore_user_token
                 )
+
+            seen_uuids: set[str] = set()
+            block_count = 0
+            for sm in raw_messages:
+                uuid = getattr(sm, "uuid", None)
+                if uuid and uuid in seen_uuids:
+                    continue
+                if uuid:
+                    seen_uuids.add(uuid)
+
+                sm_type = getattr(sm, "type", None)
+                message = getattr(sm, "message", {})
+                if not isinstance(message, dict):
+                    continue
+
+                content = message.get("content", "")
+
+                if sm_type == "user":
+                    if isinstance(content, str):
+                        await ws.send(
+                            json.dumps(
+                                {
+                                    "type": "restore_user_msg",
+                                    "sessionId": session_id,
+                                    "content": content,
+                                }
+                            )
+                        )
+                    elif isinstance(content, list):
+                        for block in content:
+                            if (
+                                isinstance(block, dict)
+                                and block.get("type") == "tool_result"
+                            ):
+                                await ws.send(
+                                    json.dumps(
+                                        {
+                                            "type": "block",
+                                            "sessionId": session_id,
+                                            "block": block,
+                                        }
+                                    )
+                                )
+                                block_count += 1
+                elif sm_type == "assistant":
+                    if isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict):
+                                await ws.send(
+                                    json.dumps(
+                                        {
+                                            "type": "block",
+                                            "sessionId": session_id,
+                                            "block": block,
+                                        }
+                                    )
+                                )
+                                block_count += 1
+
             await ws.send(
                 json.dumps(
                     {
-                        "type": "restore_ok",
+                        "type": "restore_done",
                         "sessionId": session_id,
-                        "messages": history,
                         "chatVersion": chat_version,
                     }
                 )
             )
-            logger.info(
-                f"[restore] ok, {len(history)} messages, version={chat_version}"
-            )
+            logger.info(f"[restore] ok, {block_count} blocks, version={chat_version}")
         except Exception as exc:
             logger.warning(f"[restore] failed: {exc}")
             await ws.send(

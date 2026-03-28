@@ -44,7 +44,7 @@
 
 **`backend/main.py` 实现：**
 - `chat` 的 `on_done` 回调中：通过 Supabase client 更新 note 的 `chat_version += 1`，将新 version 值放入 `done` 消息返回前端
-- 新增 `restore` 处理：读取历史并返回 `restore_ok` / `restore_error`
+- 新增 `restore` 处理：调用 `get_session_messages()`，逐条流式下发 `restore_user_msg` / `block`，结束时发 `restore_done`（或失败时 `restore_error`）。不再批量返回 `restore_ok`。
 
 **Backend Supabase access：**
 - backend 用 anon key + 请求携带的用户 JWT（`userToken`）访问 Supabase，RLS 确保只能更新自己的 note
@@ -166,8 +166,10 @@ alter table notes add column if not exists chat_version int not null default 0;
 // 请求入队等待
 { "type": "queued", "sessionId": "...", "position": 1 }
 
-// 历史恢复结果
-{ "type": "restore_ok", "sessionId": "...", "messages": [...], "chatVersion": 3 }
+// 历史恢复：流式逐条下发（替代原 restore_ok 批量方案）
+{ "type": "restore_user_msg", "sessionId": "...", "content": "用户消息文本" }
+{ "type": "block", "sessionId": "...", "block": { "type": "text"|"thinking"|"tool_use"|"tool_result", ... } }
+{ "type": "restore_done", "sessionId": "...", "chatVersion": 3 }
 
 // 恢复失败
 { "type": "restore_error", "sessionId": "...", "error": "session not found" }

@@ -23,6 +23,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 // --- State ---
 let agentConn: WebSocket | null = null
 const clientConns = new Map<string, WebSocket>()
+const browserConns = new Set<WebSocket>()
 
 // --- Per-session request queue ---
 interface QueuedRequest {
@@ -151,6 +152,9 @@ wss.on('connection', (ws) => {
         agentConn = ws
         send(ws, { type: 'agent_auth_ok' })
         log('[agent] Connected and authenticated')
+        for (const browserWs of browserConns) {
+          send(browserWs, { type: 'agent_online' })
+        }
         return
       }
 
@@ -172,7 +176,8 @@ wss.on('connection', (ws) => {
         authenticated = true
         userId = uid
         userToken = token
-        send(ws, { type: 'auth_ok', userId: uid })
+        browserConns.add(ws)
+        send(ws, { type: 'auth_ok', userId: uid, agentOnline: !!agentConn })
         log(`[browser] Connected  user=${uid}`)
         return
       }
@@ -185,6 +190,11 @@ wss.on('connection', (ws) => {
     if (role === 'browser') {
       const msgType = msg.type as string
       const sid = msg.sessionId as string
+
+      if (msgType === 'ping') {
+        send(ws, { type: 'pong', timestamp: msg.timestamp })
+        return
+      }
 
       if (msgType === 'chat') {
         if (!sid) return
@@ -278,9 +288,10 @@ wss.on('connection', (ws) => {
         log(`[agent→browser] error  session=${sid.slice(0, 8)}  error=${msg.error}`)
       } else if (msg.type === 'session_id') {
         log(`[agent→browser] session_id  session=${sid.slice(0, 8)}  claude=${String(msg.claudeSessionId ?? '').slice(0, 8)}`)
-      } else if (msg.type === 'restore_ok') {
-        const count = Array.isArray(msg.messages) ? (msg.messages as unknown[]).length : 0
-        log(`[agent→browser] restore_ok  session=${sid.slice(0, 8)}  messages=${count}`)
+      } else if (msg.type === 'restore_user_msg') {
+        log(`[agent→browser] restore_user_msg  session=${sid.slice(0, 8)}`)
+      } else if (msg.type === 'restore_done') {
+        log(`[agent→browser] restore_done  session=${sid.slice(0, 8)}  version=${msg.chatVersion}`)
       } else if (msg.type === 'restore_error') {
         log(`[agent→browser] restore_error  session=${sid.slice(0, 8)}  error=${msg.error}`)
       }
@@ -293,7 +304,7 @@ wss.on('connection', (ws) => {
       } else {
         log(`[agent→relay] no browser for session=${sid.slice(0, 8)}, dropping`)
       }
-      if (msg.type === 'done' || msg.type === 'error' || msg.type === 'restore_ok' || msg.type === 'restore_error') {
+      if (msg.type === 'done' || msg.type === 'error' || msg.type === 'restore_done' || msg.type === 'restore_error') {
         clientConns.delete(sid)
         onRequestComplete(sid)
       }
@@ -312,6 +323,7 @@ wss.on('connection', (ws) => {
     if (role === 'browser') {
       log(`[browser] Disconnected  user=${userId}  code=${code}`)
       if (sessionId) clientConns.delete(sessionId)
+      browserConns.delete(ws)
       removeFromQueue(ws)
     }
   })

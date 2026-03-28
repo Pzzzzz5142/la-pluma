@@ -4,7 +4,6 @@ import asyncio
 import logging
 import os
 from collections.abc import Awaitable, Callable
-from typing import Any
 
 from claude_agent_sdk import (
     AssistantMessage,
@@ -16,7 +15,6 @@ from claude_agent_sdk import (
     SystemMessage,
     UserMessage,
     create_sdk_mcp_server,
-    get_session_messages,
 )
 from tools import search_notes
 
@@ -136,84 +134,3 @@ class AgentRunner:
             await on_done("cancelled")
         except Exception as exc:
             await on_error(str(exc))
-
-    @staticmethod
-    def restore(claude_session_id: str) -> list[dict[str, Any]]:
-        """Retrieve chat history from Claude CLI session storage."""
-        raw_messages = get_session_messages(session_id=claude_session_id)
-        result: list[dict[str, Any]] = []
-        seen_uuids: set[str] = set()
-
-        for sm in raw_messages:
-            uuid = getattr(sm, "uuid", None)
-            if uuid and uuid in seen_uuids:
-                continue
-            if uuid:
-                seen_uuids.add(uuid)
-
-            msg_type = getattr(sm, "type", None)
-            message = getattr(sm, "message", {})
-            if not isinstance(message, dict):
-                continue
-
-            if msg_type == "user":
-                content = message.get("content", "")
-                result.append(
-                    {
-                        "role": "user",
-                        "blocks": [
-                            {"type": "text", "content": content, "status": "done"}
-                        ],
-                    }
-                )
-            elif msg_type == "assistant":
-                blocks: list[dict[str, Any]] = []
-                raw_content = message.get("content", [])
-                if isinstance(raw_content, list):
-                    for b in raw_content:
-                        if not isinstance(b, dict):
-                            continue
-                        if b.get("type") == "text":
-                            blocks.append(
-                                {
-                                    "type": "text",
-                                    "content": b.get("text", ""),
-                                    "status": "done",
-                                }
-                            )
-                        elif b.get("type") == "thinking":
-                            blocks.append(
-                                {
-                                    "type": "thinking",
-                                    "content": b.get("thinking", ""),
-                                    "status": "done",
-                                    "visible": False,
-                                }
-                            )
-                        elif b.get("type") == "tool_use":
-                            blocks.append(
-                                {
-                                    "type": "tool_use",
-                                    "id": b.get("id", ""),
-                                    "name": b.get("name", ""),
-                                    "input": str(b.get("input", {})),
-                                    "status": "success",
-                                    "visible": False,
-                                }
-                            )
-                if blocks:
-                    result.append({"role": "assistant", "blocks": blocks})
-
-        # Merge consecutive assistant messages (SDK sometimes splits thinking + text)
-        merged: list[dict[str, Any]] = []
-        for msg in result:
-            if (
-                merged
-                and merged[-1]["role"] == "assistant"
-                and msg["role"] == "assistant"
-            ):
-                merged[-1]["blocks"].extend(msg["blocks"])
-            else:
-                merged.append(msg)
-
-        return merged

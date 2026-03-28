@@ -7,6 +7,18 @@ const props = defineProps<{ noteContext?: string }>()
 const ai = useAiStore()
 const ui = useUiStore()
 
+const statusColor = computed(() => {
+  if (!ai.connected) return 'bg-muted'
+  if (ai.backendConnected) return 'bg-green-500'
+  return 'bg-yellow-400'
+})
+
+const statusLabel = computed(() => {
+  if (!ai.connected) return 'Disconnected'
+  if (ai.backendConnected) return 'Connected'
+  return 'Relay only'
+})
+
 const input = ref('')
 const messagesEl = ref<HTMLElement | null>(null)
 
@@ -49,11 +61,29 @@ function onKeydown(e: KeyboardEvent) {
       <span class="text-sm font-medium">AI</span>
       <div class="ml-auto flex items-center gap-1">
         <!-- Connection indicator -->
-        <span
-          :class="ai.connected ? 'bg-green-500' : 'bg-muted'"
-          class="w-1.5 h-1.5 rounded-full"
-          :title="ai.connected ? 'Connected' : 'Disconnected'"
-        />
+        <UPopover>
+          <button
+            class="w-2 h-2 rounded-full transition-colors focus:outline-none"
+            :class="statusColor"
+            :title="statusLabel"
+          />
+          <template #content>
+            <div class="p-3 text-xs space-y-2 min-w-[176px]">
+              <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="ai.connected ? 'bg-green-500' : 'bg-muted'" />
+                <span class="text-muted">Relay</span>
+                <span class="ml-auto font-mono text-foreground/80">
+                  {{ ai.connected ? (ai.relayLatency != null ? `${ai.relayLatency}ms` : 'Connected') : 'Disconnected' }}
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="ai.backendConnected ? 'bg-green-500' : 'bg-muted'" />
+                <span class="text-muted">AI Backend</span>
+                <span class="ml-auto text-foreground/80">{{ ai.backendConnected ? 'Connected' : ai.connected ? 'Offline' : '—' }}</span>
+              </div>
+            </div>
+          </template>
+        </UPopover>
         <UButton
           v-if="ai.messages.length > 0 || ai.claudeSessionId"
           variant="ghost"

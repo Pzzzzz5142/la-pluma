@@ -102,7 +102,7 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 ```
 
 - **relay/** (Node.js, `ws`): routes messages by `sessionId`, verifies Supabase JWT for browsers, `RELAY_SECRET` for Pi backend. Pi connects outbound — no inbound ports needed.
-- **backend/** (Python, FastAPI + `claude-agent-sdk`): connects outbound to relay, runs Agent SDK (`query()`), streams blocks back. Model: `claude-opus-4-6`, adaptive thinking. MCP servers: `notes` (SDK, in-process) with `search_notes` tool (stub); `xhs` (HTTP, `http://localhost:18060/mcp`) with all Xiaohongshu tools.
+- **backend/** (Python, FastAPI + `claude-agent-sdk`): connects outbound to relay, runs `ClaudeSDKClient`, streams blocks back. Model: `claude-sonnet-4-6`, adaptive thinking. MCP servers: `notes` (SDK, in-process) with `search_notes` tool (stub); `xhs` (HTTP, `http://localhost:18060/mcp`) with all Xiaohongshu tools.
   - **TLS note**: the relay server does TLS fingerprint filtering at the nginx level — only browser-like ClientHellos are accepted; OpenSSL-based clients get TCP RST. The backend uses `curl_cffi` (impersonate `"firefox"`) instead of `websockets` to pass this check.
 - **Frontend**: `aiStore.ts` manages WS lifecycle + `WsMessageProcessor` class maps SDK blocks → UI blocks. Components: `AiPanel`, `AiMessageRow`, `AiThinkingBlock`, `AiToolUseBlock`, `AiTextBlock`.
   - **Restore on connect**: if `_requestRestore` is called while WS is not yet open (e.g. new device, AI panel not yet opened, or relay reconnect), the request is saved to `pendingRestore` and executed automatically on the next `auth_ok`.

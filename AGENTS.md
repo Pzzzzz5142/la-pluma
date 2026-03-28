@@ -128,9 +128,10 @@ Only restart a service when its code changed **and** it does not auto-reload.
 | Utilities | @vueuse/core + @vueuse/nuxt (auto-import) |
 | Animation | @vueuse/motion |
 | Database | Supabase (PostgreSQL + Auth + Realtime) |
-| AI | Claude SDK via Nuxt server routes (Anthropic) |
+| AI | claude-agent-sdk (Python) — browser → relay → Pi backend → Anthropic |
+| Relay | Node.js (`ws`) — JWT auth, per-session serial queue |
 | Package manager | pnpm (Node 20+ required) |
-| Deploy | Vercel / Netlify |
+| Deploy | Vercel (frontend) · cloud server (relay) · Raspberry Pi (backend) |
 
 ---
 
@@ -169,6 +170,15 @@ cp .env.example .env
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_KEY=xxx
 ANTHROPIC_API_KEY=sk-ant-xxx
+
+# Relay — shared secret between relay server and backend
+RELAY_SECRET=xxx
+# [frontend] WebSocket URL to the relay  (ws:// dev, wss:// prod)
+NUXT_PUBLIC_WS_URL=ws://localhost:3001
+# [backend] WebSocket URL the Pi dials to reach the relay
+RELAY_URL=ws://localhost:3001
+# [backend] XHS MCP HTTP server (optional, defaults to localhost:18060)
+XHS_MCP_URL=http://localhost:18060/mcp
 ```
 
 ---
@@ -198,23 +208,27 @@ nuxt-notes/
 │   │   └── useNotes.ts         # CRUD + autoSave (1s debounce)
 │   ├── stores/
 │   │   ├── noteStore.ts        # note list + current note + optimistic updates
+│   │   ├── aiStore.ts          # WS lifecycle, WsMessageProcessor, cache, restore
 │   │   └── uiStore.ts          # sidebar/AI panel toggles + activeModule
 │   ├── middleware/auth.ts       # redirect unauthenticated → /login
-│   └── types/index.ts          # Note, NoteInsert, NoteUpdate
-├── server/api/                 # Nuxt server routes (AI pending)
-├── supabase/migrations/
-│   └── 001_notes.sql           # notes table + RLS + updated_at trigger
-├── app/utils/editor/            # Editor utilities
+│   ├── utils/editor/
 │   │   ├── slashCommands.ts    # slash command definitions
 │   │   ├── slashMenuState.ts   # singleton ref bridging extension ↔ Vue
 │   │   └── SlashExtension.ts   # Tiptap Extension class (slash suggestion)
+│   └── types/
+│       ├── index.ts            # Note, NoteInsert, NoteUpdate
+│       └── aiPanel.ts          # AiMessage, AiUiBlock, ThinkingUiBlock, ToolUseUiBlock…
+├── supabase/migrations/
+│   ├── 001_notes.sql           # notes table + RLS + updated_at trigger
+│   └── 002_notes_claude_session.sql  # claude_session_id + chat_version columns
 ├── relay/                      # WS relay server (deploy to cloud server)
-│   ├── src/index.ts            # routes browser ↔ Pi backend by sessionId
+│   ├── src/index.ts            # JWT auth, per-session queue, browser ↔ Pi routing
 │   └── package.json
 ├── backend/                    # Claude agent backend (run on Pi)
-│   ├── main.py                 # FastAPI app + relay WS client loop
-│   ├── agent.py                # AgentRunner (claude-agent-sdk)
-│   ├── tools.py                # MCP tools (search_notes stub)
+│   ├── main.py                 # FastAPI + relay WS loop + restore streaming
+│   ├── agent.py                # AgentRunner: ClaudeSDKClient, MCP servers, session resume
+│   ├── tools.py                # notes MCP tools (search_notes stub)
+│   ├── relay_sender.py         # RelaySender — serializes blocks → relay WS
 │   └── requirements.txt
 ├── docs/
 │   ├── requirements/

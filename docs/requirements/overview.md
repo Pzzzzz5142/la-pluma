@@ -56,7 +56,7 @@ When conflicts arise: defer to the human section first. If the human section is 
 
 **AI side panel (implemented):**
 - Toggled by the sparkles button in topbar (`uiStore.aiPanelOpen`).
-- Full chat UI with streaming, thinking blocks, tool-use blocks, cancel button, queue indicator. Thinking and tool-use blocks are shown during streaming only — they do not persist as visible UI elements after the response completes, and are not shown in restored history.
+- Full chat UI with streaming, thinking blocks, tool-use blocks, cancel button, queue indicator. Thinking and tool-use blocks remain visible after streaming completes and are restored in history.
 - Note title + body text injected as context on every message (`uiStore.aiNoteContext`).
 - "新对话" button clears history and starts a fresh Claude session.
 

@@ -6,7 +6,7 @@ const open = ref(false)
 </script>
 
 <template>
-  <div v-show="block.visible" class="text-xs text-muted border border-border rounded-md overflow-hidden">
+  <div class="text-xs text-muted border border-border rounded-md overflow-hidden">
     <button
       class="flex items-center gap-1.5 w-full px-2.5 py-1.5 hover:bg-muted/30 transition-colors text-left"
       @click="open = !open"
