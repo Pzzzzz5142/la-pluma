@@ -148,6 +148,16 @@ pnpm lint           # lint
 pnpm typecheck      # type check (must run after implementation)
 ```
 
+### Git push
+
+Always push to both remotes:
+
+```bash
+git push && git push prod main
+```
+
+`prod` remote is configured in `.git/config`.
+
 ### Running standalone Node scripts
 
 pnpm uses strict module isolation — packages are not hoisted to `node_modules/`. For transitive dependencies (e.g. `@supabase/supabase-js` via `@nuxtjs/supabase`), set `NODE_PATH` to the package's location inside `.pnpm/`:
