@@ -22,7 +22,8 @@ When conflicts arise: defer to the human section first. If the human section is 
 ### Agent Interpretation
 
 **Auth (implemented):**
-- Primary: GitHub OAuth via Supabase Auth (`signInWithOAuth`). Redirect callback at `/auth/confirm` (PKCE code exchange).
+- Primary: GitHub OAuth via Supabase Auth (`signInWithOAuth`). Redirect callback at `/auth/confirm`, which watches `useSupabaseUser()` — no manual code exchange.
+- Auth flow: `implicit` (not PKCE). `useSsrCookies: false` + `clientOptions.auth.flowType: 'implicit'` in `nuxt.config.ts`. Session stored in localStorage.
 - Fallback: email + password via `signInWithPassword`. Hidden behind a toggle link on the login page.
 - `useAuth` composable exposes `signInWithGithub`, `signInWithPassword`, `signOut`.
 - Route-level `auth` middleware (`app/middleware/auth.ts`) guards all pages except `/login` and `/auth/confirm`.
@@ -83,7 +84,7 @@ When conflicts arise: defer to the human section first. If the human section is 
 
 ### Agent Interpretation
 
-Not yet implemented. `uiStore.activeModule` currently supports `'notes' | 'agents' | 'stocks'` — chat would be added as a new entry. Design draft pending.
+Not yet implemented. `uiStore.activeModule` currently supports `'notes' | 'agents' | 'stocks'` — chat would be added as a new entry (type union + sidebar `modules` array). Design draft pending.
 
 ---
 

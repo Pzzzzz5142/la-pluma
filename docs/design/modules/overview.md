@@ -39,17 +39,13 @@ A mobile-first personal workspace with Claude AI integration. Existing tools (Lo
 │  └─────┬──────┘  └──────┬──────┘  └────┬─────┘  │
 │        └────────────────┴──────────────┘         │
 │                         │                        │
-│  ┌──────────────────────▼─────────────────────┐  │
-│  │            Server API Routes               │  │
-│  │  /api/ai/chat   /api/ai/transform          │  │
-│  │  /api/<module>/...                         │  │
-│  └──────────┬───────────────┬─────────────────┘  │
-└─────────────┼───────────────┼────────────────────┘
-              │               │
-    ┌─────────▼───┐   ┌──────▼──────┐
-    │  Claude SDK │   │  Supabase   │
-    │  (AI)       │   │  (data)     │
-    └─────────────┘   └─────────────┘
+│              ┌──────────▼──────────┐             │
+│              │     Supabase        │             │
+│              │     (data/auth)     │             │
+│              └─────────────────────┘             │
+│                                                  │
+│  AI: no server routes — direct WS to relay       │
+└──────────────────────────────────────────────────┘
 ```
 
 ---
@@ -96,18 +92,31 @@ Mobile: single column + bottom nav.
 Three-tier architecture — browser never directly touches Claude:
 
 ```
-Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→ backend/ (Pi, Python)
+Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→ backend/ (homeserver, Python)
                                                                   ↓
                                                            Anthropic API
 ```
 
-- **relay/** (Node.js, `ws`): routes messages by `sessionId`, verifies Supabase JWT for browsers, `RELAY_SECRET` for Pi backend. Pi connects outbound — no inbound ports needed.
+- **relay/** (Node.js, `ws`): routes messages by `sessionId`, verifies Supabase JWT for browsers, `RELAY_SECRET` for homeserver backend. homeserver connects outbound — no inbound ports needed.
+  - **Per-session serial queue**: same `claudeSessionId` can't run concurrently. Incoming `chat`/`restore` requests are queued per `claudeSessionId`; browser receives `{ type: "queued", position }` while waiting. `done`/`error`/`restore_done`/`restore_error` dequeue the next request.
 - **backend/** (Python, FastAPI + `claude-agent-sdk`): connects outbound to relay, runs `ClaudeSDKClient`, streams blocks back. Model: `claude-sonnet-4-6`, adaptive thinking. MCP servers: `notes` (SDK, in-process) with `search_notes` tool (stub); `xhs` (HTTP, `http://localhost:18060/mcp`) with all Xiaohongshu tools.
   - **TLS note**: the relay server does TLS fingerprint filtering at the nginx level — only browser-like ClientHellos are accepted; OpenSSL-based clients get TCP RST. The backend uses `curl_cffi` (impersonate `"firefox"`) instead of `websockets` to pass this check.
 - **Frontend**: `aiStore.ts` manages WS lifecycle + `WsMessageProcessor` class maps SDK blocks → UI blocks. Components: `AiPanel`, `AiMessageRow`, `AiThinkingBlock`, `AiToolUseBlock`, `AiTextBlock`.
-  - **Restore on connect**: if `_requestRestore` is called while WS is not yet open (e.g. new device, AI panel not yet opened, or relay reconnect), the request is saved to `pendingRestore` and executed automatically on the next `auth_ok`.
+  - Thinking and tool-use blocks are always visible (collapsible for thinking). Shown during streaming and retained after done.
+  - **Restore on connect**: if `_requestRestore` is called while WS is not yet open, saved to `pendingRestore` and executed on next `auth_ok`.
 - Note context: `tiptapToText()` utility extracts plain text from Tiptap JSON, stored in `uiStore.aiNoteContext`, synced from `[id].vue`.
 - Inline `/ai` editor commands: pending (F8)
+
+**Session persistence:**
+- Each note stores `claude_session_id` (text) + `chat_version` (int) in the DB (`002_notes_claude_session.sql`).
+- On note load: check localStorage cache (`ai-history:{claudeSessionId}`, stores `{ version, messages[] }`). Cache hit with `version >= chat_version` → instant restore. Miss/stale → send `restore` to backend.
+- Backend restore streams history block-by-block: `restore_user_msg` for user turns, `block` for assistant blocks (text/thinking/tool_use/tool_result), then `restore_done` with final `chatVersion`. Frontend rebuilds messages live.
+- On `done`: backend increments `chat_version` in DB and returns new value. Frontend writes updated cache.
+- `userToken` (fresh JWT) is carried in every `chat`/`restore` message so backend Supabase calls never use a stale auth-time token.
+
+**Multi-device / cross-tab sync:**
+- **Cross-tab**: `window.storage` event on `ai-history:*` keys. Other tab's cache write triggers immediate update if version is newer and this tab isn't actively streaming.
+- **Cross-device**: `[id].vue` subscribes to Supabase Realtime `postgres_changes` on the current note. `claude_session_id`/`chat_version` change → call `ai.loadForNote()`. Realtime events arriving during streaming are held in `pendingRealtimeUpdate` and applied when streaming ends.
 
 ### Data Layer (implemented)
 
@@ -123,7 +132,7 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 |----------|--------|-----------|
 | Editor | Tiptap | Vue-native, highly extensible, active ecosystem |
 | Content format | Tiptap JSON (jsonb) | Preserves rich format, flexible queries, export to Markdown later |
-| AI calls | Dedicated backend (Pi) via relay | API key never in Nuxt; Pi connects outbound, no public IP needed |
+| AI calls | Dedicated backend (homeserver) via relay | API key never in Nuxt; homeserver connects outbound, no public IP needed |
 | Panels | splitpanes | Stable, lightweight, Vue 3 compatible |
 | Auth | GitHub OAuth (primary) + email/password (fallback) | GitHub OAuth for convenience; password fallback for direct access |
 
@@ -141,3 +150,5 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 | 2026-03-28 | agent | backend: added XHS MCP HTTP server (`xhs`) alongside existing `notes` SDK server |
 | 2026-03-28 | agent | F2: replaced magic link with GitHub OAuth + password fallback; removed Google |
 | 2026-03-28 | agent | fix: AI chat history not restored on new device or relay reconnect — added `pendingRestore` to aiStore |
+| 2026-03-28 | agent | docs: fix stale server API routes diagram (no server/api exists); fix auth flow (implicit, not PKCE); homeserver rename |
+| 2026-03-28 | agent | AI session persistence: per-note claude_session_id, chat_version, localStorage cache, cross-tab/device sync, streaming restore, serial relay queue |

@@ -31,7 +31,7 @@ All architecture decisions, gotchas, and conventions are persisted in `AGENTS.md
 | Auth | GitHub OAuth + email/password |
 | AI | claude-agent-sdk (Python) — adaptive thinking, MCP tools |
 | Relay | Node.js (`ws`) — JWT auth, session queue |
-| Deploy | Vercel (frontend) · cloud server (relay) · Raspberry Pi (backend) |
+| Deploy | Vercel (frontend) · cloud server (relay) · homeserver (backend) |
 
 ## Project Structure
 
@@ -42,7 +42,7 @@ All architecture decisions, gotchas, and conventions are persisted in `AGENTS.md
 │   ├── stores/           # aiStore, noteStore, uiStore
 │   └── composables/
 ├── relay/                # WebSocket relay (Node.js)
-├── backend/              # Claude agent (Python — runs on Pi)
+├── backend/              # Claude agent (Python — runs on homeserver)
 │   ├── main.py           # FastAPI + relay WS loop
 │   ├── agent.py          # AgentRunner + session restore
 │   └── tools.py          # MCP tool definitions

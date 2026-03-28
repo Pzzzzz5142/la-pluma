@@ -110,7 +110,7 @@ Only restart a service when its code changed **and** it does not auto-reload.
 
 - **Component naming**: Nuxt prefixes components with their directory name. `components/layout/AppSidebar.vue` → `<LayoutAppSidebar>`. Exception: if the filename already starts with the directory name, Nuxt deduplicates — `components/ai/AiPanel.vue` → `<AiPanel>` (not `<AiAiPanel>`). Rule: combine dir + filename, then remove duplicate prefix if filename starts with it.
 - **Tailwind CSS**: Must install `tailwindcss` as a direct dev dep (`pnpm add -D tailwindcss`) and add `app/assets/css/main.css` with `@import "tailwindcss"; @import "@nuxt/ui";`, referenced in `nuxt.config.ts` via `css: ['~/assets/css/main.css']`. Without this, no styles render.
-- **Google Fonts timeout**: Pi can't reach Google servers. Set `fonts: { providers: { google: false, googleicons: false } }` in nuxt.config.ts to suppress errors.
+- **Google Fonts timeout**: homeserver can't reach Google servers. Set `fonts: { providers: { google: false, googleicons: false } }` in nuxt.config.ts to suppress errors.
 - **Supabase cookie auth on HTTP**: Default `secure: true` drops cookies on plain HTTP. Set `cookieOptions: { secure: false }` for local dev. Remove before prod.
 - **Auth / PKCE verifier error**: `useSsrCookies: true` forces `@supabase/ssr`'s `createBrowserClient` which hardcodes `flowType: 'pkce'` and causes "PKCE code verifier not found" on OAuth redirect. For SPA (`ssr: false`), use `useSsrCookies: false` + `clientOptions.auth.flowType: 'implicit'`. Session goes to localStorage; `/auth/confirm` just watches `useSupabaseUser()` — no manual `exchangeCodeForSession` needed.
 - **Mobile layout**: Uses `isMobile = useMediaQuery('(max-width: 768px)')` + `v-if/v-else` (not Tailwind responsive classes) because viewport meta was missing. `app/app.vue` sets `width=device-width` via `useHead`.
@@ -128,10 +128,10 @@ Only restart a service when its code changed **and** it does not auto-reload.
 | Utilities | @vueuse/core + @vueuse/nuxt (auto-import) |
 | Animation | @vueuse/motion |
 | Database | Supabase (PostgreSQL + Auth + Realtime) |
-| AI | claude-agent-sdk (Python) — browser → relay → Pi backend → Anthropic |
+| AI | claude-agent-sdk (Python) — browser → relay → homeserver backend → Anthropic |
 | Relay | Node.js (`ws`) — JWT auth, per-session serial queue |
 | Package manager | pnpm (Node 20+ required) |
-| Deploy | Vercel (frontend) · cloud server (relay) · Raspberry Pi (backend) |
+| Deploy | Vercel (frontend) · cloud server (relay) · homeserver (backend) |
 
 ---
 
@@ -175,7 +175,7 @@ ANTHROPIC_API_KEY=sk-ant-xxx
 RELAY_SECRET=xxx
 # [frontend] WebSocket URL to the relay  (ws:// dev, wss:// prod)
 NUXT_PUBLIC_WS_URL=ws://localhost:3001
-# [backend] WebSocket URL the Pi dials to reach the relay
+# [backend] WebSocket URL the homeserver dials to reach the relay
 RELAY_URL=ws://localhost:3001
 # [backend] XHS MCP HTTP server (optional, defaults to localhost:18060)
 XHS_MCP_URL=http://localhost:18060/mcp
@@ -222,9 +222,9 @@ nuxt-notes/
 │   ├── 001_notes.sql           # notes table + RLS + updated_at trigger
 │   └── 002_notes_claude_session.sql  # claude_session_id + chat_version columns
 ├── relay/                      # WS relay server (deploy to cloud server)
-│   ├── src/index.ts            # JWT auth, per-session queue, browser ↔ Pi routing
+│   ├── src/index.ts            # JWT auth, per-session queue, browser ↔ homeserver routing
 │   └── package.json
-├── backend/                    # Claude agent backend (run on Pi)
+├── backend/                    # Claude agent backend (run on homeserver)
 │   ├── main.py                 # FastAPI + relay WS loop + restore streaming
 │   ├── agent.py                # AgentRunner: ClaudeSDKClient, MCP servers, session resume
 │   ├── tools.py                # notes MCP tools (search_notes stub)
