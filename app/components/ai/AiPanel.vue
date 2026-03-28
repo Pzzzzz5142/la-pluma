@@ -19,6 +19,9 @@ const statusLabel = computed(() => {
   return 'Relay only'
 })
 
+const isMobile = useMediaQuery('(max-width: 768px)')
+const statusOpen = ref(false)
+
 const input = ref('')
 const messagesEl = ref<HTMLElement | null>(null)
 
@@ -61,11 +64,14 @@ function onKeydown(e: KeyboardEvent) {
       <span class="text-sm font-medium">AI</span>
       <div class="ml-auto flex items-center gap-1">
         <!-- Connection indicator -->
-        <UPopover>
+        <UPopover v-model:open="statusOpen">
           <button
             class="w-2 h-2 rounded-full transition-colors focus:outline-none"
             :class="statusColor"
             :title="statusLabel"
+            @mouseenter="!isMobile && (statusOpen = true)"
+            @mouseleave="!isMobile && (statusOpen = false)"
+            @click="isMobile && (statusOpen = !statusOpen)"
           />
           <template #content>
             <div class="p-3 text-xs space-y-2 min-w-[176px]">
