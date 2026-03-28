@@ -31,11 +31,11 @@ export default defineNuxtConfig({
   ],
 
   supabase: {
-    useSsrCookies: true,
-    cookieOptions: {
-      maxAge: 60 * 60 * 24 * 7,
-      sameSite: 'lax',
-      secure: true,
+    useSsrCookies: false,
+    clientOptions: {
+      auth: {
+        flowType: 'implicit',
+      },
     },
     redirectOptions: {
       login: '/login',

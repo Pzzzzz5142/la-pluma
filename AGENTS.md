@@ -112,7 +112,7 @@ Only restart a service when its code changed **and** it does not auto-reload.
 - **Tailwind CSS**: Must install `tailwindcss` as a direct dev dep (`pnpm add -D tailwindcss`) and add `app/assets/css/main.css` with `@import "tailwindcss"; @import "@nuxt/ui";`, referenced in `nuxt.config.ts` via `css: ['~/assets/css/main.css']`. Without this, no styles render.
 - **Google Fonts timeout**: Pi can't reach Google servers. Set `fonts: { providers: { google: false, googleicons: false } }` in nuxt.config.ts to suppress errors.
 - **Supabase cookie auth on HTTP**: Default `secure: true` drops cookies on plain HTTP. Set `cookieOptions: { secure: false }` for local dev. Remove before prod.
-- **Auth middleware timing**: `useSupabaseUser()` is null on first render without `useSsrCookies: true`. Custom middleware must not run before session is restored.
+- **Auth / PKCE verifier error**: `useSsrCookies: true` forces `@supabase/ssr`'s `createBrowserClient` which hardcodes `flowType: 'pkce'` and causes "PKCE code verifier not found" on OAuth redirect. For SPA (`ssr: false`), use `useSsrCookies: false` + `clientOptions.auth.flowType: 'implicit'`. Session goes to localStorage; `/auth/confirm` just watches `useSupabaseUser()` — no manual `exchangeCodeForSession` needed.
 - **Mobile layout**: Uses `isMobile = useMediaQuery('(max-width: 768px)')` + `v-if/v-else` (not Tailwind responsive classes) because viewport meta was missing. `app/app.vue` sets `width=device-width` via `useHead`.
 
 ---
