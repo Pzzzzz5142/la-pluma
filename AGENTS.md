@@ -182,7 +182,7 @@ nuxt-notes/
 │   ├── layouts/default.vue     # desktop sidebar + mobile bottom nav
 │   ├── pages/
 │   │   ├── index.vue           # → redirect /notes
-│   │   ├── login.vue           # magic link login
+│   │   ├── login.vue           # OAuth login (GitHub + Google)
 │   │   ├── auth/confirm.vue    # Supabase callback
 │   │   └── notes/
 │   │       ├── index.vue       # empty state
@@ -194,7 +194,7 @@ nuxt-notes/
 │   │   ├── editor/             # Tiptap editor
 │   │   └── ai/                 # AI panel + block sub-components
 │   ├── composables/
-│   │   ├── useAuth.ts          # magic link signIn/signOut
+│   │   ├── useAuth.ts          # signInWithGithub / signInWithPassword / signOut
 │   │   └── useNotes.ts         # CRUD + autoSave (1s debounce)
 │   ├── stores/
 │   │   ├── noteStore.ts        # note list + current note + optimistic updates
@@ -235,7 +235,7 @@ nuxt-notes/
 | Feature | Status |
 |---------|--------|
 | F1 Project scaffold | ✅ |
-| F2 Magic link auth | ✅ |
+| F2 OAuth auth (GitHub + Google) | ✅ |
 | F3 Supabase DB + RLS | ✅ |
 | F4 Notes CRUD + auto-save | ✅ |
 | F5 Layout + sidebar | ✅ |
