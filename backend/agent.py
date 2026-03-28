@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -18,6 +19,8 @@ from claude_agent_sdk import (
     get_session_messages,
 )
 from tools import search_notes
+
+XHS_MCP_URL = os.environ.get("XHS_MCP_URL", "http://localhost:18060/mcp")
 
 logger = logging.getLogger(__name__)
 
@@ -55,14 +58,30 @@ class AgentRunner:
         )
 
         mcp_server = create_sdk_mcp_server(name="notes", tools=[search_notes])
+        xhs_server: dict[str, str] = {"type": "http", "url": XHS_MCP_URL}
 
         options = ClaudeAgentOptions(
             system_prompt=system_prompt,
             model="claude-sonnet-4-6",
             thinking={"type": "adaptive"},
             max_turns=10,
-            mcp_servers={"notes": mcp_server},
-            allowed_tools=["search_notes"],
+            mcp_servers={"notes": mcp_server, "xhs": xhs_server},  # type: ignore
+            allowed_tools=[
+                "search_notes",
+                "mcp__xhs__check_login_status",
+                "mcp__xhs__list_feeds",
+                "mcp__xhs__search_feeds",
+                "mcp__xhs__get_feed_detail",
+                "mcp__xhs__like_feed",
+                "mcp__xhs__favorite_feed",
+                "mcp__xhs__post_comment_to_feed",
+                "mcp__xhs__reply_comment_in_feed",
+                "mcp__xhs__publish_content",
+                "mcp__xhs__publish_with_video",
+                "mcp__xhs__user_profile",
+                "mcp__xhs__get_login_qrcode",
+                "mcp__xhs__delete_cookies",
+            ],
         )
         if claude_session_id:
             options.resume = claude_session_id

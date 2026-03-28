@@ -27,9 +27,6 @@ class WsMessageProcessor {
   process(msg: WsServerMessage, messages: Ref<AiMessage[]>): void {
     if (msg.type === 'block' && msg.block) {
       this._applyBlock(msg.block, messages)
-    } else if (msg.type === 'done') {
-      // Fold all thinking + tool_use blocks now that final text has arrived
-      this._foldNonText(messages)
     }
   }
 
@@ -93,15 +90,6 @@ class WsMessageProcessor {
     }
   }
 
-  private _foldNonText(messages: Ref<AiMessage[]>): void {
-    for (const msg of messages.value) {
-      for (const block of msg.blocks) {
-        if (block.type === 'thinking' || block.type === 'tool_use') {
-          block.visible = false
-        }
-      }
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------

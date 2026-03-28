@@ -95,7 +95,6 @@ async def relay_loop() -> None:
     backoff = 1.0
     while True:
         try:
-            logger.info(f"RELAY: {RELAY_URL}, {RELAY_SECRET}")
             async with AsyncSession(impersonate="firefox") as session:
                 _ws = await session.ws_connect(RELAY_URL)
                 try:

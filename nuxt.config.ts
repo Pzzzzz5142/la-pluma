@@ -8,9 +8,11 @@ export default defineNuxtConfig({
 
   fonts: {
     providers: {
-      google: false,
       googleicons: false,
     },
+    families: [
+      { name: 'Geist', weights: [400, 500, 600, 700] },
+    ],
   },
 
   vite: {

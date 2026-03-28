@@ -3,8 +3,8 @@
 
 /* Font stack */
 :root {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif: "Georgia", "Cambria", ui-serif, serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Geist", ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
