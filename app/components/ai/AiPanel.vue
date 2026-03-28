@@ -13,11 +13,6 @@ const statusColor = computed(() => {
   return 'bg-yellow-400'
 })
 
-const statusLabel = computed(() => {
-  if (!ai.connected) return 'Disconnected'
-  if (ai.backendConnected) return 'Connected'
-  return 'Relay only'
-})
 
 const isMobile = useMediaQuery('(max-width: 768px)')
 const statusOpen = ref(false)
@@ -68,7 +63,6 @@ function onKeydown(e: KeyboardEvent) {
           <button
             class="w-2 h-2 rounded-full transition-colors focus:outline-none"
             :class="statusColor"
-            :title="statusLabel"
             @mouseenter="!isMobile && (statusOpen = true)"
             @mouseleave="!isMobile && (statusOpen = false)"
             @click="isMobile && (statusOpen = !statusOpen)"
@@ -76,14 +70,12 @@ function onKeydown(e: KeyboardEvent) {
           <template #content>
             <div class="p-3 text-xs space-y-2 min-w-[176px]">
               <div class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="ai.connected ? 'bg-green-500' : 'bg-muted'" />
                 <span class="text-muted">Relay</span>
                 <span class="ml-auto font-mono text-foreground/80">
                   {{ ai.connected ? (ai.relayLatency != null ? `${ai.relayLatency}ms` : 'Connected') : 'Disconnected' }}
                 </span>
               </div>
               <div class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="ai.backendConnected ? 'bg-green-500' : 'bg-muted'" />
                 <span class="text-muted">AI Backend</span>
                 <span class="ml-auto text-foreground/80">{{ ai.backendConnected ? 'Connected' : ai.connected ? 'Offline' : '—' }}</span>
               </div>
