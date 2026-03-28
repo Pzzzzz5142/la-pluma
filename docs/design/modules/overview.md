@@ -102,7 +102,7 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 ```
 
 - **relay/** (Node.js, `ws`): routes messages by `sessionId`, verifies Supabase JWT for browsers, `RELAY_SECRET` for Pi backend. Pi connects outbound — no inbound ports needed.
-- **backend/** (Python, FastAPI + `claude-agent-sdk`): connects outbound to relay, runs Agent SDK (`query()`), streams blocks back. Model: `claude-opus-4-6`, adaptive thinking, MCP tool `search_notes` (stub).
+- **backend/** (Python, FastAPI + `claude-agent-sdk`): connects outbound to relay, runs Agent SDK (`query()`), streams blocks back. Model: `claude-opus-4-6`, adaptive thinking. MCP servers: `notes` (SDK, in-process) with `search_notes` tool (stub); `xhs` (HTTP, `http://localhost:18060/mcp`) with all Xiaohongshu tools.
   - **TLS note**: the relay server does TLS fingerprint filtering at the nginx level — only browser-like ClientHellos are accepted; OpenSSL-based clients get TCP RST. The backend uses `curl_cffi` (impersonate `"firefox"`) instead of `websockets` to pass this check.
 - **Frontend**: `aiStore.ts` manages WS lifecycle + `WsMessageProcessor` class maps SDK blocks → UI blocks. Components: `AiPanel`, `AiMessageRow`, `AiThinkingBlock`, `AiToolUseBlock`, `AiTextBlock`.
 - Note context: `tiptapToText()` utility extracts plain text from Tiptap JSON, stored in `uiStore.aiNoteContext`, synced from `[id].vue`.
@@ -110,7 +110,7 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 
 ### Data Layer (implemented)
 
-- Supabase PostgreSQL + Auth (magic link) + RLS
+- Supabase PostgreSQL + Auth (GitHub OAuth + email/password fallback) + RLS
 - `updated_at` auto-trigger
 - Tiptap JSON format (not Markdown) — preserves full format, export to Markdown on demand
 
@@ -124,7 +124,7 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 | Content format | Tiptap JSON (jsonb) | Preserves rich format, flexible queries, export to Markdown later |
 | AI calls | Dedicated backend (Pi) via relay | API key never in Nuxt; Pi connects outbound, no public IP needed |
 | Panels | splitpanes | Stable, lightweight, Vue 3 compatible |
-| Auth | Supabase magic link | No password management, good mobile UX |
+| Auth | GitHub OAuth (primary) + email/password (fallback) | GitHub OAuth for convenience; password fallback for direct access |
 
 ---
 
@@ -137,3 +137,5 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 | 2026-03-22 | agent | F6: BubbleMenu, SlashExtension, mode toggle, task list, CodeBlockLowlight, article serif mode |
 | 2026-03-27 | agent | F7: AI panel with relay/backend split architecture, WebSocket, Agent SDK (Python) |
 | 2026-03-27 | agent | backend: replaced `websockets` with `curl_cffi` to bypass relay server TLS fingerprint filtering |
+| 2026-03-28 | agent | backend: added XHS MCP HTTP server (`xhs`) alongside existing `notes` SDK server |
+| 2026-03-28 | agent | F2: replaced magic link with GitHub OAuth + password fallback; removed Google |

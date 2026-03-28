@@ -1,34 +1,40 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 
-const { signIn, signInWithPassword } = useAuth()
+const { signInWithGithub, signInWithPassword } = useAuth()
 
 const email = ref('')
 const password = ref('')
-const loading = ref(false)
-const sent = ref(false)
+const githubLoading = ref(false)
+const passwordLoading = ref(false)
+const showPasswordForm = ref(false)
 const error = ref('')
-const showPassword = ref(false)
 
-async function handleSubmit() {
-  if (!email.value) return
-  loading.value = true
+async function handleGithub() {
+  githubLoading.value = true
   error.value = ''
   try {
-    if (showPassword.value) {
-      await signInWithPassword(email.value, password.value)
-      await navigateTo('/notes')
-    }
-    else {
-      await signIn(email.value)
-      sent.value = true
-    }
+    await signInWithGithub()
+  }
+  catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Sign in failed'
+    githubLoading.value = false
+  }
+}
+
+async function handlePassword() {
+  if (!email.value || !password.value) return
+  passwordLoading.value = true
+  error.value = ''
+  try {
+    await signInWithPassword(email.value, password.value)
+    await navigateTo('/notes')
   }
   catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Sign in failed'
   }
   finally {
-    loading.value = false
+    passwordLoading.value = false
   }
 }
 </script>
@@ -46,27 +52,38 @@ async function handleSubmit() {
         <p class="text-sm text-muted mt-1.5">Your personal workspace</p>
       </div>
 
-      <!-- Sent state -->
-      <div v-if="sent" class="text-center space-y-4 py-6">
-        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-1">
-          <UIcon name="i-lucide-mail-check" class="text-2xl text-primary" />
-        </div>
-        <div>
-          <p class="font-medium">Check your inbox</p>
-          <p class="text-sm text-muted mt-1 leading-relaxed">
-            We sent a magic link to <span class="text-foreground font-medium">{{ email }}</span>
-          </p>
-        </div>
-        <button
-          class="text-xs text-muted underline underline-offset-2 hover:text-foreground transition-colors mt-2"
-          @click="sent = false"
+      <!-- GitHub button -->
+      <div v-if="!showPasswordForm" class="space-y-3">
+        <UButton
+          block
+          size="md"
+          color="neutral"
+          variant="outline"
+          :loading="githubLoading"
+          class="gap-2"
+          @click="handleGithub"
         >
-          Use a different email
-        </button>
+          <template #leading>
+            <UIcon name="i-simple-icons-github" class="text-base" />
+          </template>
+          Continue with GitHub
+        </UButton>
+
+        <p class="text-center text-xs text-muted pt-1">
+          <button
+            type="button"
+            class="underline underline-offset-2 hover:text-foreground transition-colors"
+            @click="showPasswordForm = true; error = ''"
+          >
+            Sign in with password
+          </button>
+        </p>
+
+        <p v-if="error" class="text-xs text-error text-center">{{ error }}</p>
       </div>
 
-      <!-- Form -->
-      <form v-else class="space-y-3" @submit.prevent="handleSubmit">
+      <!-- Password form -->
+      <form v-else class="space-y-3" @submit.prevent="handlePassword">
         <UInput
           v-model="email"
           type="email"
@@ -76,9 +93,7 @@ async function handleSubmit() {
           size="md"
           class="w-full"
         />
-
         <UInput
-          v-if="showPassword"
           v-model="password"
           type="password"
           placeholder="Password"
@@ -94,20 +109,19 @@ async function handleSubmit() {
           type="submit"
           block
           size="md"
-          :loading="loading"
-          :disabled="!email"
-          class="mt-1"
+          :loading="passwordLoading"
+          :disabled="!email || !password"
         >
-          {{ showPassword ? 'Sign in' : 'Send magic link' }}
+          Sign in
         </UButton>
 
         <p class="text-center text-xs text-muted pt-1">
           <button
             type="button"
             class="underline underline-offset-2 hover:text-foreground transition-colors"
-            @click="showPassword = !showPassword; error = ''"
+            @click="showPasswordForm = false; error = ''"
           >
-            {{ showPassword ? 'Use magic link instead' : 'Sign in with password' }}
+            Back to GitHub sign in
           </button>
         </p>
       </form>

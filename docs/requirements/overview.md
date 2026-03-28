@@ -17,14 +17,15 @@ When conflicts arise: defer to the human section first. If the human section is 
 ### Human
 
 > A modular personal workspace PWA, mobile-first, with Claude AI integration and multi-device sync.
-> Magic link login (email OTP) + passwords.
+> GitHub OAuth as primary login. Email + password as fallback. No magic link.
 
 ### Agent Interpretation
 
 **Auth (implemented):**
-- Supabase magic link only — no password flow anywhere.
-- `useAuth` composable wraps `signInWithOtp` + `signOut`. Redirect callback at `/auth/confirm`.
-- Route-level `auth` middleware (`app/middleware/auth.ts`) guards all pages except `/login`.
+- Primary: GitHub OAuth via Supabase Auth (`signInWithOAuth`). Redirect callback at `/auth/confirm` (PKCE code exchange).
+- Fallback: email + password via `signInWithPassword`. Hidden behind a toggle link on the login page.
+- `useAuth` composable exposes `signInWithGithub`, `signInWithPassword`, `signOut`.
+- Route-level `auth` middleware (`app/middleware/auth.ts`) guards all pages except `/login` and `/auth/confirm`.
 
 **Multi-device sync (implemented for AI chat):**
 - Supabase Realtime `postgres_changes` subscription on the current note detects `claude_session_id` / `chat_version` changes from other devices and triggers reload.
@@ -55,7 +56,7 @@ When conflicts arise: defer to the human section first. If the human section is 
 
 **AI side panel (implemented):**
 - Toggled by the sparkles button in topbar (`uiStore.aiPanelOpen`).
-- Full chat UI with streaming, thinking blocks, tool-use blocks, cancel button, queue indicator.
+- Full chat UI with streaming, thinking blocks, tool-use blocks, cancel button, queue indicator. Thinking and tool-use blocks are shown during streaming only — they do not persist as visible UI elements after the response completes, and are not shown in restored history.
 - Note title + body text injected as context on every message (`uiStore.aiNoteContext`).
 - "新对话" button clears history and starts a fresh Claude session.
 

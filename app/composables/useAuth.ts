@@ -2,11 +2,11 @@ export function useAuth() {
   const supabase = useSupabaseClient()
   const user = useSupabaseUser()
 
-  async function signIn(email: string) {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
+  async function signInWithGithub() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+        redirectTo: `${window.location.origin}/auth/confirm`,
       },
     })
     if (error) throw error
@@ -23,5 +23,5 @@ export function useAuth() {
     await navigateTo('/login')
   }
 
-  return { user, signIn, signInWithPassword, signOut }
+  return { user, signInWithGithub, signInWithPassword, signOut }
 }
