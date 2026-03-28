@@ -105,6 +105,7 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 - **backend/** (Python, FastAPI + `claude-agent-sdk`): connects outbound to relay, runs Agent SDK (`query()`), streams blocks back. Model: `claude-opus-4-6`, adaptive thinking. MCP servers: `notes` (SDK, in-process) with `search_notes` tool (stub); `xhs` (HTTP, `http://localhost:18060/mcp`) with all Xiaohongshu tools.
   - **TLS note**: the relay server does TLS fingerprint filtering at the nginx level — only browser-like ClientHellos are accepted; OpenSSL-based clients get TCP RST. The backend uses `curl_cffi` (impersonate `"firefox"`) instead of `websockets` to pass this check.
 - **Frontend**: `aiStore.ts` manages WS lifecycle + `WsMessageProcessor` class maps SDK blocks → UI blocks. Components: `AiPanel`, `AiMessageRow`, `AiThinkingBlock`, `AiToolUseBlock`, `AiTextBlock`.
+  - **Restore on connect**: if `_requestRestore` is called while WS is not yet open (e.g. new device, AI panel not yet opened, or relay reconnect), the request is saved to `pendingRestore` and executed automatically on the next `auth_ok`.
 - Note context: `tiptapToText()` utility extracts plain text from Tiptap JSON, stored in `uiStore.aiNoteContext`, synced from `[id].vue`.
 - Inline `/ai` editor commands: pending (F8)
 
@@ -139,3 +140,4 @@ Browser (Vercel) ←——WS——→ relay/ (cloud server) ←——WS——→
 | 2026-03-27 | agent | backend: replaced `websockets` with `curl_cffi` to bypass relay server TLS fingerprint filtering |
 | 2026-03-28 | agent | backend: added XHS MCP HTTP server (`xhs`) alongside existing `notes` SDK server |
 | 2026-03-28 | agent | F2: replaced magic link with GitHub OAuth + password fallback; removed Google |
+| 2026-03-28 | agent | fix: AI chat history not restored on new device or relay reconnect — added `pendingRestore` to aiStore |

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useUiStore } from '~/stores/uiStore'
+import { useNoteStore } from '~/stores/noteStore'
 
 const ui = useUiStore()
+const noteStore = useNoteStore()
 const isMobile = useMediaQuery('(max-width: 768px)')
 const noteContext = computed(() => ui.aiNoteContext)
 
@@ -20,19 +22,33 @@ watch(route, () => {
       <Transition name="sidebar">
         <LayoutAppSidebar v-if="ui.sidebarOpen" class="w-64 shrink-0 border-r border-border" />
       </Transition>
-      <main class="flex-1 min-w-0 overflow-hidden flex flex-col">
-        <slot />
-      </main>
-      <Transition name="ai-panel">
-        <AiPanel v-if="ui.aiPanelOpen" class="w-80 shrink-0" :note-context="noteContext" />
-      </Transition>
+      <div class="relative flex flex-1 min-w-0 overflow-hidden">
+        <main class="flex-1 min-w-0 overflow-hidden flex flex-col">
+          <slot />
+        </main>
+        <Transition name="ai-panel">
+          <AiPanel v-if="ui.aiPanelOpen" class="w-80 shrink-0" :note-context="noteContext" />
+        </Transition>
+        <Transition name="loading-fade">
+          <div v-if="noteStore.loading" class="absolute inset-0 z-20 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+            <UIcon name="i-lucide-loader-circle" class="animate-spin text-muted text-lg" />
+          </div>
+        </Transition>
+      </div>
     </div>
 
     <!-- Mobile layout -->
     <div v-else class="flex flex-1 min-h-0 flex-col overflow-hidden">
-      <main class="flex-1 min-h-0 overflow-auto" style="padding-bottom:64px">
-        <slot />
-      </main>
+      <div class="relative flex-1 min-h-0 overflow-hidden">
+        <main class="h-full overflow-auto" style="padding-bottom:64px">
+          <slot />
+        </main>
+        <Transition name="loading-fade">
+          <div v-if="noteStore.loading" class="absolute inset-0 z-20 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+            <UIcon name="i-lucide-loader-circle" class="animate-spin text-muted text-lg" />
+          </div>
+        </Transition>
+      </div>
       <!-- Mobile AI panel: bottom sheet -->
       <Transition name="ai-sheet">
         <div
@@ -75,6 +91,14 @@ watch(route, () => {
 .ai-sheet-enter-from,
 .ai-sheet-leave-to {
   transform: translateY(100%);
+  opacity: 0;
+}
+.loading-fade-enter-active,
+.loading-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+.loading-fade-enter-from,
+.loading-fade-leave-to {
   opacity: 0;
 }
 </style>

@@ -30,6 +30,7 @@ export function useNotes() {
   }
 
   async function fetchNote(id: string) {
+    store.setCurrentNote(null)
     store.loading = true
     store.error = null
     try {

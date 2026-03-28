@@ -168,6 +168,7 @@ export const useAiStore = defineStore('ai', () => {
   let reconnectDelay = 1000
   let currentNoteId: string | null = null
   let currentChatVersion = 0
+  let pendingRestore: { cSessionId: string; noteId: string } | null = null
 
   const wsUrl = useRuntimeConfig().public.wsUrl as string
   const supabaseSession = useSupabaseSession()
@@ -228,6 +229,11 @@ export const useAiStore = defineStore('ai', () => {
 
       if (msg.type === 'auth_ok') {
         connected.value = true
+        if (pendingRestore) {
+          const { cSessionId, noteId } = pendingRestore
+          pendingRestore = null
+          _requestRestore(cSessionId, noteId)
+        }
       } else if (msg.type === 'auth_error') {
         console.error('[aiStore] Auth error:', msg.error)
         ws?.close()
@@ -360,6 +366,7 @@ export const useAiStore = defineStore('ai', () => {
     if (!noteClaudeSessionId) {
       claudeSessionId.value = null
       messages.value = []
+      pendingRestore = null
       if (import.meta.client) {
         const notice = localStorage.getItem(`ai-notice:${noteId}`)
         if (notice) {
@@ -384,7 +391,10 @@ export const useAiStore = defineStore('ai', () => {
   }
 
   function _requestRestore(cSessionId: string, noteId: string): void {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      pendingRestore = { cSessionId, noteId }
+      return
+    }
 
     wsSessionId = self.crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)
     restoring.value = true
@@ -406,6 +416,7 @@ export const useAiStore = defineStore('ai', () => {
     claudeSessionId.value = null
     messages.value = []
     currentChatVersion = 0
+    pendingRestore = null
     sessionCleared.value = true
   }
 

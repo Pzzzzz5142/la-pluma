@@ -106,7 +106,7 @@ function onKeydown(e: KeyboardEvent) {
         placeholder="Ask something…"
         :rows="1"
         autoresize
-        :disabled="!ai.connected"
+        :disabled="!ai.connected || ai.restoring"
         class="flex-1 text-sm resize-none"
         @keydown="onKeydown"
       />
@@ -123,7 +123,7 @@ function onKeydown(e: KeyboardEvent) {
         variant="ghost"
         size="xs"
         icon="i-lucide-send"
-        :disabled="!input.trim() || !ai.connected"
+        :disabled="!input.trim() || !ai.connected || ai.restoring"
         class="text-muted hover:text-primary mb-0.5"
         @click="send()"
       />
